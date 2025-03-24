@@ -25,3 +25,4 @@ def cuda_timing_decorator(func):
 
         elapsed_time_ms = start_event.elapsed_time(end_event) * 1000  # 时间以毫秒为单位
         return result, elapsed_time_ms
+    return wrapper
