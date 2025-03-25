@@ -121,5 +121,5 @@ class FlashAtten(nn.Module):
 
         context_layer, flash_time = self._apply_flash_atten(q, k, v, cu_seqlens, cu_seqlens, max_seqlen, max_seqlen)
         output, attrn_linear_time = self._apply_Linear(context_layer)
-        return output, qkv_time, flash_time, attrn_linear_time
+        return output, (qkv_time, flash_time, attrn_linear_time)
 
