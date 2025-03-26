@@ -27,15 +27,19 @@ def test_flash_atten():
     input = torch.rand(args.seq_length, args.dim).to(dtype=get_torch_dtype(args.dtype), device=device)
     cu_seq_len = torch.arange(0, args.seq_length, step=512).to(dtype=torch.int32, device=device)
     max_seqlen = torch.max(cu_seq_len)
+    
+    for i in range(10):
+        output, elapsed_time_ms = flash_atten(input, cu_seq_len, max_seqlen)
+    
     output, elapsed_time_ms = flash_atten(input, cu_seq_len, max_seqlen)
     
     qkv_time, flash_atten_time, linear_time = elapsed_time_ms
     total_time = qkv_time + flash_atten_time + linear_time
     
-    print(f"total_time: {total_time}ms")
-    print(f"qkv_time: {qkv_time:.2f}ms")
-    print(f"flash_atten_time: {flash_atten_time:.2f}ms")
-    print(f"linear_time: {linear_time:.2f}ms")
+    print(f"total_time: {total_time}us")
+    print(f"qkv_time: {qkv_time:.2f}us")
+    print(f"flash_atten_time: {flash_atten_time:.2f}us")
+    print(f"linear_time: {linear_time:.2f}us")
     
     
 if __name__ == "__main__":
