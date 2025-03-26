@@ -1,8 +1,13 @@
+import sys
+sys.path.append('./') 
 import torch
 from models.model import FlashAtten
 from utils.args import get_params, get_torch_dtype
 import csv
 import os
+
+
+
 
 def test_flash_atten():
     args = get_params()
@@ -63,9 +68,11 @@ def test_flash_atten_input_sim_gamma():
     if os.path.exists("./time-info") is False:
         os.mkdir("./time-info")
     file_path = f"./time-info/flash-attn-total-tokens-{args.seq_length}.csv"
+    
+    # write to file
     with open(file_path, 'w') as file:
         writer = csv.writer(file)
-        writer.writerow(['total_tokes', 'max_seqlen', 'Atten_qkv_time', 'Atten_flash_time',  'Atten_linear_time',  'total_time'])
+        writer.writerow(['total_tokes', 'max_seqlen', 'batch_size', 'Atten_qkv_time', 'Atten_flash_time',  'Atten_linear_time',  'total_time'])
 
         for seq_lens in sample_data:
             seq_lens = torch.tensor(seq_lens)
@@ -82,7 +89,7 @@ def test_flash_atten_input_sim_gamma():
             # print(f"flash_atten_time: {flash_atten_time:.2f}ms")
             # print(f"linear_time: {linear_time:.2f}ms")
             
-            writer.writerow([seq_cumsum[-1].item(), max_seqlen.item(), qkv_time, flash_atten_time, linear_time, total_time])
+            writer.writerow([seq_cumsum[-1].item(), max_seqlen.item(), seq_lens.shape[-1], qkv_time, flash_atten_time, linear_time, total_time])
     
         
    
