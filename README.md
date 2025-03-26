@@ -11,7 +11,7 @@ Please Use or refer to the scripts 'create-conda-env.sh'
 TO run the code of this dictory, please add the $PWD to $PYTHONPATH.
 
 ```
-export PYTHONPATH=$PWD:$PYTHONPATH
+	export PYTHONPATH=$PWD:$PYTHONPATH
 ```
 
 ## 🚀 How to run
