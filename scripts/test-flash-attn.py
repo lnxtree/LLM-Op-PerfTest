@@ -1,3 +1,5 @@
+import sys
+sys.path.append('.')
 import torch
 from models.model import FlashAtten
 from utils.args import get_params, get_torch_dtype
@@ -12,7 +14,7 @@ def test_flash_atten():
     flash_atten = FlashAtten(args)
     flash_atten.eval()
     input = torch.rand(args.seq_length, args.dim).to(dtype=get_torch_dtype(args.dtype), device=device)
-    cu_seq_len = torch.arange(0, args.seq_length, step=512).to(device)
+    cu_seq_len = torch.arange(0, args.seq_length, step=512).to(dtype=torch.int32, device=device)
     max_seqlen = torch.max(cu_seq_len)
     output, elapsed_time_ms = flash_atten(input, cu_seq_len, max_seqlen)
     
