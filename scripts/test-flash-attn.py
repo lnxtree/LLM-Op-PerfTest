@@ -1,7 +1,5 @@
 import sys
 sys.path.append('./') 
-import sys
-sys.path.append('.')
 import torch
 from models.model import *
 from utils.args import get_params, get_torch_dtype
@@ -66,6 +64,7 @@ def test_flash_atten_input_sim_gamma():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {torch.cuda.get_device_name()}")  # 确认是否为 NVIDIA GPU
     flash_atten = FlashAtten(args)
+    flash_atten = flash_atten.to(dtype=get_torch_dtype(args.dtype), device=device)
     flash_atten.eval()
     input = torch.rand(args.seq_length, args.dim).to(dtype=get_torch_dtype(args.dtype), device=device)
     
