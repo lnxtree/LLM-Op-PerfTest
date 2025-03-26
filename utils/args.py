@@ -1,5 +1,7 @@
 import argparse
 import torch
+from typing import Optional
+
 def get_params():
     parser = argparse.ArgumentParser()
     parser.add_argument("--world_size", type=int, default=1,
@@ -10,12 +12,14 @@ def get_params():
                         help='Sequence length.')
     parser.add_argument("--dim", type=int, default=4096,
                         help='Dimension.')
-    parser.add_argument("--hidden_size", type=int, default=8192,
-                        help='Hidden size.')
     parser.add_argument("--num_attention_heads", type=int, default=32,   
                         help='Number of attention heads.')
-    parser.add_argument("--pipeline_model_parallel", type=int, default=1,
-                        help='Degree of pipeline model parallelism.')
+    parser.add_argument("--num_kv_heads", type=int, default=None,
+                        help='Number of key-value heads. If None, use num_attention_heads.')
+    parser.add_argument("--ffn_dim_multiplier", type=float, default=2.0,
+                        help='Feed-forward network dimension multiplier. '
+                        'ffn_dim = ffn_dim_multiplier * dim'
+                        )
     parser.add_argument("--micro_batch", type=int, default=1,
                        help='Batch size per model instance (local batch size). '
                        'Global batch size is local batch size times data '
@@ -23,13 +27,6 @@ def get_params():
                         )
     parser.add_argument("--dtype", type=str, default="float16",
                         help='Data type.')
-    parser.add_argument(
-        "--ffn_hidden_size",
-        type=int,
-        default=None,
-        help="Transformer Feed-Forward Network hidden size. "
-        "This is set to 4*hidden-size if not provided",
-    )
     args = parser.parse_args()
     
     return args

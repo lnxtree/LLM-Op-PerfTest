@@ -23,6 +23,6 @@ def cuda_timing_decorator(func):
         end_event.record()
         torch.cuda.synchronize()
 
-        elapsed_time_ms = start_event.elapsed_time(end_event) * 1000  # 时间以毫秒为单位
+        elapsed_time_ms = start_event.elapsed_time(end_event) * 1000 # us
         return result, elapsed_time_ms
     return wrapper

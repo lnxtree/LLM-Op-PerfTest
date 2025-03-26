@@ -2,6 +2,7 @@
 import torch
 import time
 import warnings
+from dataclasses import dataclass
 import torch.nn as nn
 import torch.nn.functional as F
 import math
@@ -23,18 +24,37 @@ from flash_attn.flash_attn_interface import (
     flash_attn_with_kvcache,
 )
         
+@dataclass
+class ModelArgs:
+    world_size: int = 1
+    tensor_model_parallel_size: int = 1
+    seq_length: int = 4096
+    dim: int = 4096
+    num_attention_heads: int = 32
+    num_kv_heads: Optional[int] = None
+    vocab_size: int = -1
+    ffn_dim_multiplier: Optional[float] = None
+    dtype: str = "float16"
 
+    
 
 class FlashAtten(nn.Module):
-    def __init__(self, args=None):
+    def __init__(self, args: ModelArgs):
         super(FlashAtten, self).__init__()
         self.tp = args.tensor_model_parallel_size
-        micro_batch = args.micro_batch
         seq_len = args.seq_length
 
-        dim = args.dim
-        hidden_size = args.hidden_size
+        self.dim = args.dim
+        self.head_dim = self.dim // args.num_attention_heads
+        self.num_attention_heads = args.num_attention_heads
+        self.num_kv_heads = args.num_kv_heads
+        
+        if self.num_kv_heads is None:
+            self.num_kv_heads = args.num_attention_heads
+        self.ffn_dim = int(args.ffn_dim_multiplier * self.dim)
+        
         num_attention_heads = args.num_attention_heads
+        num_kv_heads = self.num_kv_heads
         
         if args.dtype == "bfloat16":
             dtype = torch.bfloat16
@@ -44,50 +64,20 @@ class FlashAtten(nn.Module):
             dtype = torch.float32
         device = torch.cuda.current_device()
 
-        self.atten_weight_1 = torch.rand(
-            divide((3 * hidden_size), self.tp), dim, device=device
-        ).to(dtype)
+        self.wq = nn.Linear(self.dim, num_attention_heads * self.head_dim)
+        self.wk = nn.Linear(self.dim, num_kv_heads * self.head_dim)
+        self.wv = nn.Linear(self.dim, num_kv_heads * self.head_dim)
 
-        self.hidden_size_per_partition = divide(hidden_size, self.tp)
-        self.num_attention_heads_per_partition = divide(num_attention_heads, self.tp)
-        self.hidden_size_per_attention_head = divide(hidden_size, num_attention_heads)
-        self.num_query_groups_per_partition = self.num_attention_heads_per_partition
-
-        self.atten_linear_weight = torch.rand(
-            dim, self.hidden_size_per_partition, device=device
-        ).to(dtype)
+        self.wo = nn.Linear(num_attention_heads * self.head_dim, self.dim)
 
     @cuda_timing_decorator
     def _apply_attenqkv(self, input):
 
-        output = F.linear(input , self.atten_weight_1)
-
-
-        (query_layer, key_layer, value_layer) = torch.split(
-            output,
-            [
-                self.hidden_size_per_partition,
-                self.hidden_size_per_partition,
-                self.hidden_size_per_partition,
-            ],
-            dim=-1,
-        )
-        query_layer = query_layer.view(
-            -1,
-            self.num_attention_heads_per_partition,
-            self.hidden_size_per_attention_head,
-        )
-        key_layer = key_layer.view(
-            -1,
-            self.num_attention_heads_per_partition,
-            self.hidden_size_per_attention_head,
-        )
-        value_layer = value_layer.view(
-            -1,
-            self.num_attention_heads_per_partition,
-            self.hidden_size_per_attention_head,
-        )
-        return query_layer, key_layer, value_layer
+        q, k, v = self.wq(input), self.wk(input), self.wv(input)
+        q = q.view(-1, self.num_attention_heads, self.head_dim)
+        k = k.view(-1, self.num_kv_heads, self.head_dim)
+        v = v.view(-1, self.num_kv_heads, self.head_dim)
+        return q, k, v
 
     @cuda_timing_decorator
     def _apply_flash_atten(self, q, k, v, cu_seqlens_q, cu_seqlens_k, max_seqlen_q, max_seqlen_k):
@@ -107,15 +97,20 @@ class FlashAtten(nn.Module):
         return output
 
     @cuda_timing_decorator
-    def _apply_Linear(self, context_layer):
-        context_layer = rearrange(context_layer, "t h d -> t (h d)").contiguous()
-        output_parallel = F.linear(context_layer, self.atten_linear_weight)
-        return output_parallel
+    def _apply_Linear(self, input):
+        input = input.view(-1, self.dim)
+        output = self.wo(input)
+        return output
 
     def forward(self, input, cu_seqlens, max_seqlen):
-        # input: [batch seq_len hidden_size]
-        # q, k, v: [total_seq_len hidden_size]
-        # context_layer: [total_seq_len hidden_size]
+        """
+            input: [total_tokens, hidden_size]
+            q: [total_seq_len num_attention_heads head_dim]
+            k,v : [total_seq_len num_kv_heads head_dim]
+            context_layer: [total_seq_len num_attention_heads head_dim]
+            output: [total_seq_len hidden_size]
+        """
+        
         result, qkv_time = self._apply_attenqkv(input)
         q, k, v = result
 
