@@ -10,4 +10,4 @@
 nvcc --version
 nvidia-smi
 # pytest   -v flash-attention/tests/test_flash_attn.py
-python scripts/test-flash-attn.py
+python scripts/test-flash-attn.py --seq_length 4096

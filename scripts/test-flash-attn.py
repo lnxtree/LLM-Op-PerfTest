@@ -1,10 +1,20 @@
 import sys
 sys.path.append('.')
 import torch
-from models.model import FlashAtten
+from models.model import *
 from utils.args import get_params, get_torch_dtype
 def test_flash_atten():
     args = get_params()
+    model_args = ModelArgs(
+        world_size=args.world_size,
+        tensor_model_parallel_size=args.tensor_model_parallel_size,
+        seq_length=args.seq_length,
+        dim=args.dim,
+        num_attention_heads=args.num_attention_heads,
+        num_kv_heads=args.num_kv_heads,
+        ffn_dim_multiplier=args.ffn_dim_multiplier,
+        dtype=args.dtype,
+    )
     if args is None:
         print("args is None")
         return
@@ -12,6 +22,7 @@ def test_flash_atten():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {torch.cuda.get_device_name()}")  # 确认是否为 NVIDIA GPU
     flash_atten = FlashAtten(args)
+    flash_atten = flash_atten.to(dtype=get_torch_dtype(args.dtype), device=device)
     flash_atten.eval()
     input = torch.rand(args.seq_length, args.dim).to(dtype=get_torch_dtype(args.dtype), device=device)
     cu_seq_len = torch.arange(0, args.seq_length, step=512).to(dtype=torch.int32, device=device)
