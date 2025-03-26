@@ -8,11 +8,11 @@ def get_params():
                         help='Degree of tensor model parallelism.')
     parser.add_argument("--seq_length", type=int, default=4096,
                         help='Sequence length.')
-    parser.add_argument("--dim", type=int, default=2048,
+    parser.add_argument("--dim", type=int, default=4096,
                         help='Dimension.')
-    parser.add_argument("--hidden_size", type=int, default=4096,
+    parser.add_argument("--hidden_size", type=int, default=8192,
                         help='Hidden size.')
-    parser.add_argument("--num_attention_heads", type=int, default=16,   
+    parser.add_argument("--num_attention_heads", type=int, default=32,   
                         help='Number of attention heads.')
     parser.add_argument("--pipeline_model_parallel", type=int, default=1,
                         help='Degree of pipeline model parallelism.')
