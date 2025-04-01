@@ -68,8 +68,10 @@ def test_flash_atten_input_sim_gamma():
     flash_atten.eval()
     input = torch.rand(args.seq_length, args.dim).to(dtype=get_torch_dtype(args.dtype), device=device)
     
+    target_min_seqlen = 200
+    target_max_seqlen = 2000
     
-    sample_data = read_sample_from_file(f"./sample-out/sampled_lists_total-tokens-{args.seq_length}.txt")
+    sample_data = read_sample_from_file(f"./sample-out/sampled_lists_distribution-{target_min_seqlen}-{target_max_seqlen}/total-tokens-{args.seq_length}.txt")
     sample_data = sample_data[0:100]
     
     
@@ -81,9 +83,10 @@ def test_flash_atten_input_sim_gamma():
         max_seqlen = torch.max(seq_lens)
         output, elapsed_time_ms = flash_atten(input, cu_seq_len, max_seqlen)
     
-    if os.path.exists("./time-info") is False:
-        os.mkdir("./time-info")
-    file_path = f"./time-info/flash-attn-total-tokens-{args.seq_length}.csv"
+    time_save_path = f"./time-info/distribution-{target_min_seqlen}-{target_max_seqlen}"
+    if os.path.exists(time_save_path) is False:
+        os.mkdir(time_save_path)
+    file_path = f"{time_save_path}/total-tokens-{args.seq_length}-GQA-{args.num_kv_heads}.csv"
     
     # write to file
     with open(file_path, 'w') as file:

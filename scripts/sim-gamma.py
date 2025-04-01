@@ -7,8 +7,8 @@ import os
 x_min, x_max = 0, 4096
 
 # 目标分布占比
-percentiles = [0.2, 0.8]  # 20% 和 80% 分位点
-target_values = [600, 1000]  # 对应 350 和 600 tokens
+percentiles = [0.2, 0.95]  # 20% 和 80% 分位点
+target_values = [100, 200]  # 对应 350 和 600 tokens
 
 # 定义误差函数，用于优化 gamma 分布参数
 def loss(params):
@@ -34,54 +34,65 @@ gamma_dist_opt /= np.trapz(gamma_dist_opt, x)
 
 
 # 进行 10 轮采样，使得总和 seq_len 约为 4096
-num_samples = 4000
-total_seqlen = 32768
-sampled_seqlens = stats.gamma.rvs(alpha_opt, scale=1/beta_opt, size=num_samples)
-sampled_seqlens = np.round(sampled_seqlens).astype(int)  # 取整
+num_samples = 30000
+total_seqlens = [2048, 4096, 8192, 16384, 32768]
+# sampled_seqlens = stats.gamma.rvs(alpha_opt, scale=1/beta_opt, size=num_samples)
+# sampled_seqlens = np.round(sampled_seqlens).astype(int)  # 取整
 
-queue = sampled_seqlens.tolist()
+# queue = sampled_seqlens.tolist()
 # 从队列中取数，每次取接近 total_seqlen 的数为一个列表
-sampled_lists = []
-current_list = []
-current_sum = 0
-
-while queue:
-    value = queue.pop(0)
-    if current_sum + value <= total_seqlen:
-        current_list.append(value)
-        current_sum += value
-    else:
-        sampled_lists.append(current_list)
-        current_list = [value]
-        current_sum = value
-        
-for i, seq_lens in enumerate(sampled_lists):
-    difference = total_seqlen - sum(seq_lens)
-    per_diference = difference // len(seq_lens)
-    for j in range(len(seq_lens)):
-        seq_lens[j] += per_diference
-    seq_lens[0] += difference % len(seq_lens)
 
 
-if os.path.exists("sample-out") is False:
-    os.makedirs("sample-out")
 
-with open(f"sample-out/sampled_lists_total-tokens-{total_seqlen}.txt", "w") as f:
-    for seq_lens in sampled_lists:
-        f.write(str(seq_lens) + "\n")
-# print(sampled_lists)
+for total_seqlen in total_seqlens:
+    sampled_seqlens = stats.gamma.rvs(alpha_opt, scale=1/beta_opt, size=num_samples)
+    sampled_seqlens = np.round(sampled_seqlens).astype(int)  # 取整
 
-# 画出优化后的分布曲线
-plt.figure(figsize=(8, 5))
-plt.plot(x, gamma_dist_opt, label=f"Optimized Gamma (α={alpha_opt:.2f}, β={beta_opt:.5f})", color='r')
-plt.axvline(target_values[0], linestyle="--", color="gray", label="Target {}".format(target_values[0]))
-plt.axvline(target_values[1], linestyle="--", color="gray", label="Target {}".format(target_values[1]))
-plt.xlabel("Sequence Length")
-plt.ylabel("Probability Density")
-plt.title("Optimized Gamma Distribution for Sequence Length")
-plt.legend()
-plt.grid()
-plt.show()
+    queue = sampled_seqlens.tolist()
+    sampled_lists = []
+    current_list = []
+    current_sum = 0
+    while queue:
+        value = queue.pop(0)
+        if current_sum + value <= total_seqlen:
+            current_list.append(value)
+            current_sum += value
+        else:
+            sampled_lists.append(current_list)
+            current_list = [value]
+            current_sum = value
+            
+    for i, seq_lens in enumerate(sampled_lists):
+        difference = total_seqlen - sum(seq_lens)
+        if (len(seq_lens) == 0):
+            seq_lens.append(difference)
+            continue
+        per_diference = difference // len(seq_lens)
+        for j in range(len(seq_lens)):
+            seq_lens[j] += per_diference
+        seq_lens[0] += difference % len(seq_lens)
+
+
+    if os.path.exists("sample-out") is False:
+        os.makedirs("sample-out")
+
+    with open(f"sample-out/sampled_lists_distribution-{target_values[0]}-{target_values[1]}_total-tokens-{total_seqlen}.txt", "w") as f:
+        for seq_lens in sampled_lists:
+            f.write(str(seq_lens) + "\n")
+    # print(sampled_lists)
+
+    # 画出优化后的分布曲线
+    plt.figure(figsize=(8, 5))
+    plt.plot(x, gamma_dist_opt, label=f"Optimized Gamma (α={alpha_opt:.2f}, β={beta_opt:.5f})", color='r')
+    plt.axvline(target_values[0], linestyle="--", color="gray", label="Target {}".format(target_values[0]))
+    plt.axvline(target_values[1], linestyle="--", color="gray", label="Target {}".format(target_values[1]))
+    plt.xlabel("Sequence Length")
+    plt.ylabel("Probability Density")
+    plt.title("Optimized Gamma Distribution for Sequence Length")
+    plt.legend()
+    plt.grid()
+    plt.savefig(f"sample-out/optimized_gamma_distribution-{target_values[0]}-{target_values[1]}.png", dpi=300, bbox_inches='tight')
+    plt.show()  
 
 # 输出优化后的参数
-alpha_opt, beta_opt
+# alpha_opt, beta_opt

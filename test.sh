@@ -10,8 +10,8 @@
 nvcc --version
 nvidia-smi
 
-python scripts/test-flash-attn.py --seq_length 2048
-python scripts/test-flash-attn.py --seq_length 4096
-python scripts/test-flash-attn.py --seq_length 8192
-python scripts/test-flash-attn.py --seq_length 16384
-python scripts/test-flash-attn.py --seq_length 32768
+python scripts/test-flash-attn.py --seq_length 2048 --num_kv_heads 4
+python scripts/test-flash-attn.py --seq_length 4096 --num_kv_heads 4
+python scripts/test-flash-attn.py --seq_length 8192 --num_kv_heads 4
+python scripts/test-flash-attn.py --seq_length 16384 --num_kv_heads 4
+python scripts/test-flash-attn.py --seq_length 32768 --num_kv_heads 4

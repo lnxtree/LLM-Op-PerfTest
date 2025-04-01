@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import csv
 
-total_tokens = 16384
+total_tokens = 32768
 
 def read_column_from_csv(file_path, column_index):
     column_data = []
